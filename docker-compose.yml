@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
     container_name: weather-web
     environment:
-      DB_HOST: ${DB_HOME}
+      DB_HOST: ${DB_HOST}
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
