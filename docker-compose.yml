@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  database:
+    image: timescale/timescaledb:latest-pg14
+    container_name: weather-db
+    environment:
+      POSTGRES_DB: weather_db
+      POSTGRES_USER: weather_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  collector:
+    build: ./collector
+    container_name: weather-collector
+    environment:
+      DB_HOST: database
+      DB_NAME: weather_db
+      DB_USER: weather_user
+      DB_PASSWORD: ${DB_PASSWORD}
+      WEATHER_API_KEY: ${WEATHER_API_KEY}
+      LOCATION_LAT: ${LOCATION_LAT}
+      LOCATION_LON: ${LOCATION_LON}
+      COLLECTION_INTERVAL: ${COLLECTION_INTERVAL}
+      DATA_DIR: /data
+    volumes:
+      - ./weather_data:/data
+    depends_on:
+      - database
+    restart: unless-stopped
+    
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: weather-web
+    environment:
+      DB_HOST: timescaledb
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "8080:8080"
+    volumes:
+      - weather_data:/data:ro
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+volumes:
+  db_data:
+    driver: local
+  timescale_data:
+    driver: local
+  weather_data:
+    driver: local

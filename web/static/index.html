@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .current-weather {
+            grid-column: span 2;
+        }
+        
+        .temp-display {
+            font-size: 4em;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .weather-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .weather-item .label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .weather-item .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .stat-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .last-updated {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ Weather Dashboard</h1>
+        
+        <div class="grid">
+            <!-- Current Weather -->
+            <div class="card current-weather">
+                <h2>Current Conditions</h2>
+                <div id="current-loading" class="loading">Loading...</div>
+                <div id="current-weather" style="display: none;">
+                    <div class="temp-display">
+                        <span id="temp">--</span>°C
+                    </div>
+                    <div class="weather-grid">
+                        <div class="weather-item">
+                            <div class="label">Feels Like</div>
+                            <div class="value" id="feels-like">--</div>
+                        </div>
+                        <div class="weather-item">
+                            <div class="label">Humidity</div>
+                            <div class="value" id="humidity">--</div>
+                        </div>
+                        <div class="weather-item">
+                            <div class="label">Wind Speed</div>
+                            <div class="value" id="wind-speed">--</div>
+                        </div>
+                        <div class="weather-item">
+                            <div class="label">Wind Gust</div>
+                            <div class="value" id="wind-gust">--</div>
+                        </div>
+                        <div class="weather-item">
+                            <div class="label">Pressure</div>
+                            <div class="value" id="pressure">--</div>
+                        </div>
+                        <div class="weather-item">
+                            <div class="label">Visibility</div>
+                            <div class="value" id="visibility">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stats -->
+            <div class="card">
+                <h2>Statistics</h2>
+                <div id="stats-loading" class="loading">Loading...</div>
+                <div id="stats" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Total Records</div>
+                            <div class="stat-value" id="total-records">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">24h Avg Temp</div>
+                            <div class="stat-value" id="avg-temp-24h">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">24h Min Temp</div>
+                            <div class="stat-value" id="min-temp-24h">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">24h Max Temp</div>
+                            <div class="stat-value" id="max-temp-24h">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Avg Humidity</div>
+                            <div class="stat-value" id="avg-humidity-24h">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Max Wind Gust</div>
+                            <div class="stat-value" id="max-gust-24h">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 24 Hour Chart -->
+        <div class="card">
+            <h2>Last 24 Hours</h2>
+            <div class="chart-container">
+                <canvas id="chart-24h"></canvas>
+            </div>
+        </div>
+        
+        <!-- 7 Day Chart -->
+        <div class="card">
+            <h2>Last 7 Days (Hourly Averages)</h2>
+            <div class="chart-container">
+                <canvas id="chart-7d"></canvas>
+            </div>
+        </div>
+        
+        <div class="last-updated">
+            Last updated: <span id="last-updated">--</span>
+        </div>
+    </div>
+
+    <script>
+        // Fetch and display current weather
+        async function updateCurrent() {
+            try {
+                const response = await fetch('/api/latest');
+                const data = await response.json();
+                
+                document.getElementById('current-loading').style.display = 'none';
+                document.getElementById('current-weather').style.display = 'block';
+                
+                document.getElementById('temp').textContent = data.temperature?.toFixed(1) || '--';
+                document.getElementById('feels-like').textContent = data.feels_like?.toFixed(1) + '°C' || '--';
+                document.getElementById('humidity').textContent = data.humidity?.toFixed(0) + '%' || '--';
+                document.getElementById('wind-speed').textContent = data.wind_speed?.toFixed(1) + ' m/s' || '--';
+                document.getElementById('wind-gust').textContent = data.wind_gust?.toFixed(1) + ' m/s' || '--';
+                document.getElementById('pressure').textContent = data.pressure?.toFixed(1) + ' hPa' || '--';
+                document.getElementById('visibility').textContent = data.visibility?.toFixed(1) + ' km' || '--';
+                
+                document.getElementById('last-updated').textContent = new Date(data.time).toLocaleString();
+            } catch (error) {
+                console.error('Error fetching current weather:', error);
+            }
+        }
+        
+        // Fetch and display stats
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                document.getElementById('stats-loading').style.display = 'none';
+                document.getElementById('stats').style.display = 'block';
+                
+                document.getElementById('total-records').textContent = data.total_records?.toLocaleString() || '--';
+                document.getElementById('avg-temp-24h').textContent = data.last_24h.avg_temp?.toFixed(1) + '°C' || '--';
+                document.getElementById('min-temp-24h').textContent = data.last_24h.min_temp?.toFixed(1) + '°C' || '--';
+                document.getElementById('max-temp-24h').textContent = data.last_24h.max_temp?.toFixed(1) + '°C' || '--';
+                document.getElementById('avg-humidity-24h').textContent = data.last_24h.avg_humidity?.toFixed(0) + '%' || '--';
+                document.getElementById('max-gust-24h').textContent = data.last_24h.max_gust?.toFixed(1) + ' m/s' || '--';
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+        
+        // Create 24-hour chart
+        async function create24hChart() {
+            const response = await fetch('/api/history/24h');
+            const data = await response.json();
+            
+            const ctx = document.getElementById('chart-24h').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.data.map(d => new Date(d.time).toLocaleTimeString()),
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: data.data.map(d => d.temperature),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+        
+        // Create 7-day chart
+        async function create7dChart() {
+            const response = await fetch('/api/history/7d');
+            const data = await response.json();
+            
+            const ctx = document.getElementById('chart-7d').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.data.map(d => new Date(d.time).toLocaleDateString()),
+                    datasets: [
+                        {
+                            label: 'Avg Temp (°C)',
+                            data: data.data.map(d => d.avg_temp),
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Min Temp (°C)',
+                            data: data.data.map(d => d.min_temp),
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Max Temp (°C)',
+                            data: data.data.map(d => d.max_temp),
+                            borderColor: '#f56565',
+                            backgroundColor: 'rgba(245, 101, 101, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    },
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+        
+        // Initialize dashboard
+        updateCurrent();
+        updateStats();
+        create24hChart();
+        create7dChart();
+        
+        // Auto-refresh every 3 minutes
+        setInterval(updateCurrent, 180000);
+        setInterval(updateStats, 180000);
+    </script>
+</body>
+</html>

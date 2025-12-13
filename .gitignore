@@ -1,0 +1,53 @@
+# Environment variables (contains secrets)
+.env
+config.json
+
+# Weather data (too large for git)
+weather_data/
+data/
+*.json
+!config.json.example
+
+# Count file
+count.file
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Backups
+backups/
+*.sql
+*.sql.gz
+*.tar.gz
+
+# Docker
+*.pid
+
+# misc
+misc/
+
+# Exception
+!database/init.sql
