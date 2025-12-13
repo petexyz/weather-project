@@ -5,28 +5,28 @@ services:
     image: timescale/timescaledb:latest-pg14
     container_name: weather-db
     environment:
-      POSTGRES_DB: weather_db
-      POSTGRES_USER: weather_user
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:${DB_PORT}"
     restart: unless-stopped
 
   collector:
     build: ./collector
     container_name: weather-collector
     environment:
-      DB_HOST: database
-      DB_NAME: weather_db
-      DB_USER: weather_user
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       WEATHER_API_KEY: ${WEATHER_API_KEY}
       LOCATION_LAT: ${LOCATION_LAT}
       LOCATION_LON: ${LOCATION_LON}
       COLLECTION_INTERVAL: ${COLLECTION_INTERVAL}
-      DATA_DIR: /data
+      DATA_DIR: ${DATA_DIR}
     volumes:
       - ./weather_data:/data
     depends_on:
@@ -35,16 +35,16 @@ services:
     
   web:
     build:
-      context: ./web
+      context: ${WEB_CONTEXT}
       dockerfile: Dockerfile
     container_name: weather-web
     environment:
-      DB_HOST: timescaledb
+      DB_HOST: ${DB_HOME}
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "8080:8080"
+      - "${WEB_SERVER_PORT}:${WEB_SERVER_PORT}"
     volumes:
       - weather_data:/data:ro
     depends_on:
@@ -59,8 +59,6 @@ services:
 
 volumes:
   db_data:
-    driver: local
-  timescale_data:
     driver: local
   weather_data:
     driver: local
