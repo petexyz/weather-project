@@ -10,6 +10,7 @@ import time
 import psycopg2
 
 # Configuration from environment variables
+API_URL = os.getenv('WEATHER_API_URL', 'https://api.tomorrow.io/v4/weather/realtime')
 API_KEY = os.getenv('WEATHER_API_KEY')
 LAT = os.getenv('LOCATION_LAT', '42.621864')
 LON = os.getenv('LOCATION_LON', '-71.28336')
@@ -21,6 +22,8 @@ DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_NAME = os.getenv('DB_NAME', 'weather_db')
 DB_USER = os.getenv('DB_USER', 'weather_user')
 DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+
+
 
 def get_db_connection():
     """Connect to database"""
@@ -131,15 +134,13 @@ def main():
     else:
         print("⚠️  Running in file-only mode")
     
-    url = "https://api.tomorrow.io/v4/weather/realtime"
-    
     count = 0
     while True:
         try:
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
             
             # Fetch weather data
-            response = requests.get(url, params={
+            response = requests.get(API_URL, params={
                 'location': f"{LAT},{LON}",
                 'apikey': API_KEY
             }, timeout=10)
