@@ -66,7 +66,7 @@ def get_24h_history():
     cur = conn.cursor()
     
     cur.execute("""
-        SELECT time, temperature, humidity, wind_speed, pressure_sea_level
+        SELECT time, temperature, temperature_apparent, humidity, wind_speed, pressure_sea_level
         FROM weather_readings 
         WHERE time > NOW() - INTERVAL '24 hours'
         ORDER BY time ASC
@@ -80,9 +80,10 @@ def get_24h_history():
             {
                 "time": row[0].isoformat(),
                 "temperature": row[1],
-                "humidity": row[2],
-                "wind_speed": row[3],
-                "pressure": row[4]
+                "feels_like": row[2],
+                "humidity": row[3],
+                "wind_speed": row[4],
+                "pressure": row[5]
             }
             for row in rows
         ]
