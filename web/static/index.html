@@ -375,30 +375,34 @@
                             <div class="label">Visibility</div>
                             <div class="value" id="visibility">--</div>
                         </div>
+                        <div class="weather-item">
+                            <div class="label">Cloud Cover</div>
+                            <div class="value" id="cloud-cover">--</div>
+                        </div>
+                        <div class="weather-item">
+                            <div class="label">Precipitation</div>
+                            <div class="value" id="precipitation">--</div>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <!-- Stats -->
             <div class="card">
-                <h2>Statistics</h2>
+                <h2>24 Hour Statistics</h2>
                 <div id="stats-loading" class="loading">Loading...</div>
                 <div id="stats" style="display: none;">
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <div class="stat-label">Total Records</div>
-                            <div class="stat-value" id="total-records">--</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">24h Avg Temp</div>
+                            <div class="stat-label">Avg Temp</div>
                             <div class="stat-value" id="avg-temp-24h">--</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">24h Min Temp</div>
+                            <div class="stat-label">Min Temp</div>
                             <div class="stat-value" id="min-temp-24h">--</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">24h Max Temp</div>
+                            <div class="stat-label">Max Temp</div>
                             <div class="stat-value" id="max-temp-24h">--</div>
                         </div>
                         <div class="stat-item">
@@ -408,6 +412,10 @@
                         <div class="stat-item">
                             <div class="stat-label">Max Wind Gust</div>
                             <div class="stat-value" id="max-gust-24h">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Avg Wind</div>
+                            <div class="stat-value" id="avg-wind-24h">--</div>
                         </div>
                     </div>
                 </div>
@@ -432,6 +440,28 @@
         
         <div class="last-updated">
             Last updated: <span id="last-updated">--</span>
+        </div>
+        
+        <div class="card">
+            <h2>System Information</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Total Records</div>
+                    <div class="stat-value" id="total-records">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">First Record</div>
+                    <div class="stat-value" id="first-record">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Last Record</div>
+                    <div class="stat-value" id="last-record">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Data Span</div>
+                    <div class="stat-value" id="data-span">--</div>
+                </div>
+            </div>
         </div>
         
         <div class="card client-info">
@@ -634,6 +664,37 @@
                 document.getElementById('pressure').textContent = formatPressure(data.pressure);
                 document.getElementById('visibility').textContent = formatDistance(data.visibility);
                 
+                // Cloud cover
+                const cloudCover = data.cloud_cover || 0;
+                let cloudDesc = 'Clear';
+                if (cloudCover > 75) cloudDesc = 'Overcast';
+                else if (cloudCover > 50) cloudDesc = 'Mostly Cloudy';
+                else if (cloudCover > 25) cloudDesc = 'Partly Cloudy';
+                else if (cloudCover > 0) cloudDesc = 'Mostly Clear';
+                document.getElementById('cloud-cover').textContent = `${cloudDesc} (${cloudCover}%)`;
+                
+                // Precipitation
+                let precipText = 'None';
+                const rain = data.rain_intensity || 0;
+                const snow = data.snow_intensity || 0;
+                const sleet = data.sleet_intensity || 0;
+                const freezingRain = data.freezing_rain_intensity || 0;
+                
+                console.log('Precip data:', { rain, snow, sleet, freezingRain }); // Debug
+                
+                if (snow > 0) {
+                    precipText = `❄️ Snow: ${snow.toFixed(2)} mm/hr`;
+                } else if (freezingRain > 0) {
+                    precipText = `🧊 Freezing Rain: ${freezingRain.toFixed(2)} mm/hr`;
+                } else if (sleet > 0) {
+                    precipText = `🌨️ Sleet: ${sleet.toFixed(2)} mm/hr`;
+                } else if (rain > 0) {
+                    precipText = `🌧️ Rain: ${rain.toFixed(2)} mm/hr`;
+                }
+                document.getElementById('precipitation').textContent = precipText;
+                
+                console.log('Cloud cover:', data.cloud_cover); // Debug
+                
                 document.getElementById('last-updated').textContent = new Date(data.time).toLocaleString();
             } catch (error) {
                 console.error('Error fetching current weather:', error);
@@ -649,12 +710,30 @@
                 document.getElementById('stats-loading').style.display = 'none';
                 document.getElementById('stats').style.display = 'block';
                 
-                document.getElementById('total-records').textContent = data.total_records?.toLocaleString() || '--';
                 document.getElementById('avg-temp-24h').textContent = formatTemp(data.last_24h.avg_temp);
                 document.getElementById('min-temp-24h').textContent = formatTemp(data.last_24h.min_temp);
                 document.getElementById('max-temp-24h').textContent = formatTemp(data.last_24h.max_temp);
                 document.getElementById('avg-humidity-24h').textContent = data.last_24h.avg_humidity?.toFixed(0) + '%' || '--';
                 document.getElementById('max-gust-24h').textContent = formatWind(data.last_24h.max_gust);
+                document.getElementById('avg-wind-24h').textContent = formatWind(data.last_24h.avg_wind);
+                
+                // System stats
+                document.getElementById('total-records').textContent = data.total_records?.toLocaleString() || '--';
+                
+                const firstDate = data.first_record ? new Date(data.first_record).toLocaleDateString() : '--';
+                const lastDate = data.last_record ? new Date(data.last_record).toLocaleDateString() : '--';
+                document.getElementById('first-record').textContent = firstDate;
+                document.getElementById('last-record').textContent = lastDate;
+                
+                // Calculate data span
+                if (data.first_record && data.last_record) {
+                    const first = new Date(data.first_record);
+                    const last = new Date(data.last_record);
+                    const days = Math.floor((last - first) / (1000 * 60 * 60 * 24));
+                    document.getElementById('data-span').textContent = `${days} days`;
+                } else {
+                    document.getElementById('data-span').textContent = '--';
+                }
             } catch (error) {
                 console.error('Error fetching stats:', error);
             }
