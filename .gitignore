@@ -1,15 +1,10 @@
 # Environment variables (contains secrets)
 .env
-config.json
 
 # Weather data (too large for git)
 weather_data/
 data/
 *.json
-!config.json.example
-
-# Count file
-count.file
 
 # Python
 __pycache__/
@@ -49,5 +44,5 @@ backups/
 # misc
 misc/
 
-# Exception
+# Exception for schema definition
 !database/init.sql
