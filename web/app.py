@@ -34,7 +34,9 @@ def get_latest():
     cur.execute("""
         SELECT time, temperature, temperature_apparent, humidity, 
                wind_speed, wind_gust, wind_direction,
-               pressure_sea_level, visibility, weather_code
+               pressure_sea_level, visibility, weather_code,
+               cloud_cover, rain_intensity, snow_intensity, 
+               sleet_intensity, freezing_rain_intensity
         FROM weather_readings 
         ORDER BY time DESC 
         LIMIT 1
@@ -56,7 +58,12 @@ def get_latest():
         "wind_direction": row[6],
         "pressure": row[7],
         "visibility": row[8],
-        "weather_code": row[9]
+        "weather_code": row[9],
+        "cloud_cover": row[10],
+        "rain_intensity": row[11],
+        "snow_intensity": row[12],
+        "sleet_intensity": row[13],
+        "freezing_rain_intensity": row[14]
     }
 
 @app.get("/api/history/24h")

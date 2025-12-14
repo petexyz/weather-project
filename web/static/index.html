@@ -99,13 +99,9 @@
         
         @media (min-width: 768px) {
             .grid {
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                grid-template-columns: 1fr 1fr;
                 gap: 20px;
                 margin-bottom: 20px;
-            }
-            
-            .current-weather {
-                grid-column: span 2;
             }
             
             body {
@@ -146,11 +142,11 @@
         }
         
         .current-weather {
-            /* Mobile: takes full width by default */
+            /* No longer spans 2 columns - equal width now */
         }
         
         .temp-display {
-            font-size: 3em;
+            font-size: 2.5em;
             font-weight: bold;
             color: #333;
             text-align: center;
@@ -159,7 +155,7 @@
         
         @media (min-width: 768px) {
             .temp-display {
-                font-size: 4em;
+                font-size: 3.5em;
                 margin: 20px 0;
             }
         }
@@ -173,8 +169,8 @@
         
         @media (min-width: 768px) {
             .weather-grid {
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                gap: 15px;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
                 margin-top: 20px;
             }
         }
@@ -238,7 +234,7 @@
         
         @media (min-width: 768px) {
             .stats-grid {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: repeat(2, 1fr);
                 gap: 10px;
             }
         }
@@ -250,6 +246,12 @@
             border-radius: 0;
         }
         
+        @media (min-width: 768px) {
+            .stat-item {
+                padding: 12px;
+            }
+        }
+        
         .stat-label {
             font-size: 0.85em;
             color: #666;
@@ -259,6 +261,12 @@
             font-size: 1.2em;
             font-weight: bold;
             color: #333;
+        }
+        
+        @media (min-width: 768px) {
+            .stat-value {
+                font-size: 1.3em;
+            }
         }
         
         .last-updated {
@@ -556,6 +564,15 @@
             return hpa.toFixed(1) + ' hPa';
         }
         
+        function formatPrecip(mm) {
+            if (!mm && mm !== 0) return '0';
+            if (currentUnits === 'imperial') {
+                const inches = mm * 0.0393701;
+                return inches.toFixed(2) + ' in/hr';
+            }
+            return mm.toFixed(2) + ' mm/hr';
+        }
+        
         function setUnits(units) {
             currentUnits = units;
             localStorage.setItem('weatherUnits', units);
@@ -680,20 +697,16 @@
                 const sleet = data.sleet_intensity || 0;
                 const freezingRain = data.freezing_rain_intensity || 0;
                 
-                console.log('Precip data:', { rain, snow, sleet, freezingRain }); // Debug
-                
                 if (snow > 0) {
-                    precipText = `❄️ Snow: ${snow.toFixed(2)} mm/hr`;
+                    precipText = `❄️ Snow: ${formatPrecip(snow)}`;
                 } else if (freezingRain > 0) {
-                    precipText = `🧊 Freezing Rain: ${freezingRain.toFixed(2)} mm/hr`;
+                    precipText = `🧊 Freezing Rain: ${formatPrecip(freezingRain)}`;
                 } else if (sleet > 0) {
-                    precipText = `🌨️ Sleet: ${sleet.toFixed(2)} mm/hr`;
+                    precipText = `🌨️ Sleet: ${formatPrecip(sleet)}`;
                 } else if (rain > 0) {
-                    precipText = `🌧️ Rain: ${rain.toFixed(2)} mm/hr`;
+                    precipText = `🌧️ Rain: ${formatPrecip(rain)}`;
                 }
                 document.getElementById('precipitation').textContent = precipText;
-                
-                console.log('Cloud cover:', data.cloud_cover); // Debug
                 
                 document.getElementById('last-updated').textContent = new Date(data.time).toLocaleString();
             } catch (error) {
