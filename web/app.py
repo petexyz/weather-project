@@ -1,187 +1,119 @@
 #!/usr/bin/env python3
-"""Weather Dashboard API"""
+"""
+Weather Dashboard API - Refactored
+Clean architecture with proper separation of concerns
+"""
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-import psycopg2
-import os
-from datetime import datetime, timedelta
+from fastapi.responses import HTMLResponse, JSONResponse
+from pathlib import Path
+import signal
+import sys
 
-app = FastAPI(title="Weather Dashboard")
+from config import Config
+from database import DatabaseManager
 
-# Database config
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_NAME = os.getenv('DB_NAME', 'weather_db')
-DB_USER = os.getenv('DB_USER', 'weather_user')
-DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+# Initialize
+config = Config()
+db = DatabaseManager(config.database)
+app = FastAPI(title="Lowell Weather Dashboard", version="2.0")
 
-def get_db():
-    """Get database connection"""
-    return psycopg2.connect(
-        host=DB_HOST,
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
-    )
+
+# Graceful shutdown
+def shutdown_handler(signum, frame):
+    """Handle shutdown gracefully"""
+    print("Shutting down...")
+    db.close()
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, shutdown_handler)
+signal.signal(signal.SIGTERM, shutdown_handler)
+
 
 @app.get("/api/latest")
-def get_latest():
+def api_latest():
     """Get most recent weather reading"""
-    conn = get_db()
-    cur = conn.cursor()
-    
-    cur.execute("""
-        SELECT time, temperature, temperature_apparent, humidity, 
-               wind_speed, wind_gust, wind_direction,
-               pressure_sea_level, visibility, weather_code,
-               cloud_cover, rain_intensity, snow_intensity, 
-               sleet_intensity, freezing_rain_intensity
-        FROM weather_readings 
-        ORDER BY time DESC 
-        LIMIT 1
-    """)
-    
-    row = cur.fetchone()
-    conn.close()
-    
-    if not row:
-        return {"error": "No data"}
-    
-    return {
-        "time": row[0].isoformat(),
-        "temperature": row[1],
-        "feels_like": row[2],
-        "humidity": row[3],
-        "wind_speed": row[4],
-        "wind_gust": row[5],
-        "wind_direction": row[6],
-        "pressure": row[7],
-        "visibility": row[8],
-        "weather_code": row[9],
-        "cloud_cover": row[10],
-        "rain_intensity": row[11],
-        "snow_intensity": row[12],
-        "sleet_intensity": row[13],
-        "freezing_rain_intensity": row[14]
-    }
+    data = db.get_latest_reading()
+    if not data:
+        raise HTTPException(status_code=404, detail="No data available")
+    return data
+
 
 @app.get("/api/history/24h")
-def get_24h_history():
+def api_24h_history():
     """Get last 24 hours of data"""
-    conn = get_db()
-    cur = conn.cursor()
-    
-    cur.execute("""
-        SELECT time, temperature, temperature_apparent, humidity, wind_speed, pressure_sea_level
-        FROM weather_readings 
-        WHERE time > NOW() - INTERVAL '24 hours'
-        ORDER BY time ASC
-    """)
-    
-    rows = cur.fetchall()
-    conn.close()
-    
-    return {
-        "data": [
-            {
-                "time": row[0].isoformat(),
-                "temperature": row[1],
-                "feels_like": row[2],
-                "humidity": row[3],
-                "wind_speed": row[4],
-                "pressure": row[5]
-            }
-            for row in rows
-        ]
-    }
+    data = db.get_24h_history()
+    return {"data": data}
+
 
 @app.get("/api/history/7d")
-def get_7d_summary():
+def api_7d_summary():
     """Get 7-day hourly averages"""
-    conn = get_db()
-    cur = conn.cursor()
-    
-    cur.execute("""
-        SELECT 
-            time_bucket('1 hour', time) AS hour,
-            AVG(temperature) as avg_temp,
-            MIN(temperature) as min_temp,
-            MAX(temperature) as max_temp,
-            AVG(humidity) as avg_humidity,
-            AVG(wind_speed) as avg_wind
-        FROM weather_readings 
-        WHERE time > NOW() - INTERVAL '7 days'
-        GROUP BY hour
-        ORDER BY hour ASC
-    """)
-    
-    rows = cur.fetchall()
-    conn.close()
-    
-    return {
-        "data": [
-            {
-                "time": row[0].isoformat(),
-                "avg_temp": float(row[1]) if row[1] else None,
-                "min_temp": float(row[2]) if row[2] else None,
-                "max_temp": float(row[3]) if row[3] else None,
-                "avg_humidity": float(row[4]) if row[4] else None,
-                "avg_wind": float(row[5]) if row[5] else None
-            }
-            for row in rows
-        ]
-    }
+    data = db.get_7d_summary()
+    return {"data": data}
+
 
 @app.get("/api/stats")
-def get_stats():
-    """Get database statistics"""
-    conn = get_db()
-    cur = conn.cursor()
+def api_stats():
+    """Get database and system statistics"""
+    stats = db.get_statistics()
+    if not stats:
+        raise HTTPException(status_code=500, detail="Could not fetch statistics")
     
-    # Total records
-    cur.execute("SELECT COUNT(*) FROM weather_readings")
-    total_records = cur.fetchone()[0]
+    # Add collection count from file
+    try:
+        count_file = config.count_file
+        if count_file.exists():
+            stats['collection_count'] = int(count_file.read_text().strip())
+        else:
+            stats['collection_count'] = None
+    except Exception:
+        stats['collection_count'] = None
     
-    # Date range
-    cur.execute("SELECT MIN(time), MAX(time) FROM weather_readings")
-    min_date, max_date = cur.fetchone()
-    
-    # Recent stats (last 24h)
-    cur.execute("""
-        SELECT 
-            AVG(temperature), MIN(temperature), MAX(temperature),
-            AVG(humidity), AVG(wind_speed), MAX(wind_gust)
-        FROM weather_readings 
-        WHERE time > NOW() - INTERVAL '24 hours'
-    """)
-    stats_24h = cur.fetchone()
-    
-    conn.close()
-    
-    return {
-        "total_records": total_records,
-        "first_record": min_date.isoformat() if min_date else None,
-        "last_record": max_date.isoformat() if max_date else None,
-        "last_24h": {
-            "avg_temp": float(stats_24h[0]) if stats_24h[0] else None,
-            "min_temp": float(stats_24h[1]) if stats_24h[1] else None,
-            "max_temp": float(stats_24h[2]) if stats_24h[2] else None,
-            "avg_humidity": float(stats_24h[3]) if stats_24h[3] else None,
-            "avg_wind": float(stats_24h[4]) if stats_24h[4] else None,
-            "max_gust": float(stats_24h[5]) if stats_24h[5] else None
-        }
-    }
+    return stats
+
+
+@app.get("/api/health")
+def api_health():
+    """Health check endpoint"""
+    try:
+        # Test database connection
+        stats = db.get_statistics()
+        if stats:
+            return {"status": "healthy", "database": "connected"}
+        else:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unhealthy", "database": "error"}
+            )
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "error": str(e)}
+        )
+
 
 @app.get("/", response_class=HTMLResponse)
-def read_root():
+def root():
     """Serve the dashboard HTML"""
-    with open("/app/static/index.html", "r") as f:
-        return f.read()
+    try:
+        html_path = Path("/app/static/index.html")
+        return html_path.read_text()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not load page: {e}")
+
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="/app/static"), name="static")
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(
+        app,
+        host=config.web.host,
+        port=config.web.port,
+        log_level="info"
+    )

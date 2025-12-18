@@ -454,6 +454,10 @@
             <h2>System Information</h2>
             <div class="stats-grid">
                 <div class="stat-item">
+                    <div class="stat-label">Total Collections</div>
+                    <div class="stat-value" id="collection-count">--</div>
+                </div>
+                <div class="stat-item">
                     <div class="stat-label">Total Records</div>
                     <div class="stat-value" id="total-records">--</div>
                 </div>
@@ -468,6 +472,10 @@
                 <div class="stat-item">
                     <div class="stat-label">Data Span</div>
                     <div class="stat-value" id="data-span">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Avg per Day</div>
+                    <div class="stat-value" id="avg-per-day">--</div>
                 </div>
             </div>
         </div>
@@ -732,6 +740,7 @@
                 
                 // System stats
                 document.getElementById('total-records').textContent = data.total_records?.toLocaleString() || '--';
+                document.getElementById('collection-count').textContent = data.collection_count?.toLocaleString() || '--';
                 
                 const firstDate = data.first_record ? new Date(data.first_record).toLocaleDateString() : '--';
                 const lastDate = data.last_record ? new Date(data.last_record).toLocaleDateString() : '--';
@@ -744,8 +753,17 @@
                     const last = new Date(data.last_record);
                     const days = Math.floor((last - first) / (1000 * 60 * 60 * 24));
                     document.getElementById('data-span').textContent = `${days} days`;
+                    
+                    // Calculate average records per day
+                    if (days > 0 && data.total_records) {
+                        const avgPerDay = Math.round(data.total_records / days);
+                        document.getElementById('avg-per-day').textContent = avgPerDay.toLocaleString();
+                    } else {
+                        document.getElementById('avg-per-day').textContent = '--';
+                    }
                 } else {
                     document.getElementById('data-span').textContent = '--';
+                    document.getElementById('avg-per-day').textContent = '--';
                 }
             } catch (error) {
                 console.error('Error fetching stats:', error);
