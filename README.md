@@ -6,28 +6,16 @@ both as JSON files and in a TimescaleDB hypertable, and serves a live dashboard.
 
 ## Architecture
 
-```
-                 ┌──────────────┐   every COLLECTION_INTERVAL seconds
-                 │  Tomorrow.io │◀──────────────┐
-                 │  realtime API│               │
-                 └──────────────┘               │
-                                                │
-   ┌───────────────────────────────────────────┴───────┐
-   │ collector (weather_collector.py)                   │
-   │  1. fetch reading                                  │
-   │  2. save JSON  → weather_data/YYYYMM/YYYYMMDD/...   │  ← source of truth
-   │  3. insert row → TimescaleDB                        │
-   └───────────────────────────┬────────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │ TimescaleDB (PG14)  │  weather_readings hypertable
-                    │ derived store       │  (compressed after 7 days)
-                    └──────────┬──────────┘
-                               │ read-only
-                    ┌──────────▼──────────┐
-                    │ web (FastAPI)       │  JSON API + dashboard
-                    │ localhost:8080      │
-                    └─────────────────────┘
+```mermaid
+flowchart TD
+    API["Tomorrow.io realtime weather API"]
+    COL["collector (weather_collector.py)<br/>1. fetch reading<br/>2. save JSON → weather_data/YYYYMM/YYYYMMDD/<br/>3. insert row → TimescaleDB"]
+    DB[("TimescaleDB · PostgreSQL 14<br/>weather_readings hypertable<br/>compressed after 7 days")]
+    WEB["web (FastAPI) · localhost:8080<br/>JSON API + single-page dashboard"]
+
+    API -->|"fetch every COLLECTION_INTERVAL seconds"| COL
+    COL -->|"writes"| DB
+    DB -->|"read-only"| WEB
 ```
 
 **Key property:** the JSON files in `weather_data/` are the **source of truth**.
