@@ -27,7 +27,7 @@ class DatabaseManager:
     def _create_pool(self):
         """Create connection pool"""
         try:
-            self._pool = psycopg2.pool.SimpleConnectionPool(
+            self._pool = psycopg2.pool.ThreadedConnectionPool(
                 1,  # min connections
                 5,  # max connections
                 host=self.config.host,
@@ -57,6 +57,9 @@ class DatabaseManager:
         conn = self._pool.getconn()
         try:
             yield conn
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             self._pool.putconn(conn)
     

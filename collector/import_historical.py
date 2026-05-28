@@ -17,110 +17,92 @@ from database import DatabaseManager
 
 class WeatherFileParser:
     """Parses various weather JSON file formats"""
-    
+
+    def __init__(self, default_lat: float, default_lon: float):
+        # Used for the timeline format, which carries no location of its own
+        self.default_lat = default_lat
+        self.default_lon = default_lon
+
     @staticmethod
-    def parse_realtime_format(data: dict) -> Optional[Tuple]:
+    def _build_row(time_str: str, lat: float, lon: float, values: dict) -> Tuple:
+        """Build a database row tuple from a values dict (column order matches INSERT)"""
+        return (
+            time_str, lat, lon,
+            values.get('altimeterSetting'),
+            values.get('pressureSeaLevel'),
+            values.get('pressureSurfaceLevel'),
+            values.get('temperature'),
+            values.get('temperatureApparent'),
+            values.get('dewPoint'),
+            values.get('humidity'),
+            values.get('cloudBase'),
+            values.get('cloudCeiling'),
+            values.get('cloudCover'),
+            values.get('rainIntensity'),
+            values.get('snowIntensity'),
+            values.get('sleetIntensity'),
+            values.get('freezingRainIntensity'),
+            values.get('precipitationProbability'),
+            values.get('windSpeed'),
+            values.get('windGust'),
+            values.get('windDirection'),
+            values.get('visibility'),
+            values.get('uvIndex'),
+            values.get('uvHealthConcern'),
+            values.get('weatherCode')
+        )
+
+    def parse_realtime_format(self, data: dict) -> Optional[Tuple]:
         """Parse realtime API format: {data: {time, values}, location}"""
         try:
-            time_str = data['data']['time']
-            values = data['data']['values']
             location = data['location']
-            
-            return (
-                time_str, location['lat'], location['lon'],
-                values.get('altimeterSetting'),
-                values.get('pressureSeaLevel'),
-                values.get('pressureSurfaceLevel'),
-                values.get('temperature'),
-                values.get('temperatureApparent'),
-                values.get('dewPoint'),
-                values.get('humidity'),
-                values.get('cloudBase'),
-                values.get('cloudCeiling'),
-                values.get('cloudCover'),
-                values.get('rainIntensity'),
-                values.get('snowIntensity'),
-                values.get('sleetIntensity'),
-                values.get('freezingRainIntensity'),
-                values.get('precipitationProbability'),
-                values.get('windSpeed'),
-                values.get('windGust'),
-                values.get('windDirection'),
-                values.get('visibility'),
-                values.get('uvIndex'),
-                values.get('uvHealthConcern'),
-                values.get('weatherCode')
+            return self._build_row(
+                data['data']['time'],
+                location['lat'], location['lon'],
+                data['data']['values']
             )
         except (KeyError, TypeError):
             return None
-    
-    @staticmethod
-    def parse_timeline_format(data: dict) -> List[Tuple]:
+
+    def parse_timeline_format(self, data: dict) -> List[Tuple]:
         """Parse timeline API format: {data: {timelines: [...]}}"""
         rows = []
         try:
-            lat = 42.621864  # Default location
-            lon = -71.28336
-            
             for timeline in data['data']['timelines']:
                 for interval in timeline.get('intervals', []):
-                    time_str = interval['startTime']
-                    values = interval['values']
-                    
-                    rows.append((
-                        time_str, lat, lon,
-                        values.get('altimeterSetting'),
-                        values.get('pressureSeaLevel'),
-                        values.get('pressureSurfaceLevel'),
-                        values.get('temperature'),
-                        values.get('temperatureApparent'),
-                        values.get('dewPoint'),
-                        values.get('humidity'),
-                        values.get('cloudBase'),
-                        values.get('cloudCeiling'),
-                        values.get('cloudCover'),
-                        values.get('rainIntensity'),
-                        values.get('snowIntensity'),
-                        values.get('sleetIntensity'),
-                        values.get('freezingRainIntensity'),
-                        values.get('precipitationProbability'),
-                        values.get('windSpeed'),
-                        values.get('windGust'),
-                        values.get('windDirection'),
-                        values.get('visibility'),
-                        values.get('uvIndex'),
-                        values.get('uvHealthConcern'),
-                        values.get('weatherCode')
+                    rows.append(self._build_row(
+                        interval['startTime'],
+                        self.default_lat, self.default_lon,
+                        interval['values']
                     ))
         except (KeyError, TypeError):
             pass
-        
+
         return rows
-    
-    @classmethod
-    def parse_file(cls, file_path: Path) -> List[Tuple]:
+
+    def parse_file(self, file_path: Path) -> List[Tuple]:
         """
         Parse any weather JSON file format
-        
+
         Returns:
             List of database rows (may be empty if parse fails)
         """
         try:
             with open(file_path, 'r') as f:
                 data = json.load(f)
-            
+
             # Try realtime format first
-            row = cls.parse_realtime_format(data)
+            row = self.parse_realtime_format(data)
             if row:
                 return [row]
-            
+
             # Try timeline format
-            rows = cls.parse_timeline_format(data)
+            rows = self.parse_timeline_format(data)
             if rows:
                 return rows
-            
+
             return []
-            
+
         except json.JSONDecodeError:
             return []
         except Exception:
@@ -171,7 +153,10 @@ class HistoricalImporter:
         self.config = config
         self.logger = get_logger()
         self.db = DatabaseManager(config.database)
-        self.parser = WeatherFileParser()
+        self.parser = WeatherFileParser(
+            config.location.latitude,
+            config.location.longitude
+        )
         self.finder = FileFinder()
     
     def import_batch(self, rows: List[Tuple]) -> int:

@@ -28,7 +28,7 @@ CREATE TABLE weather_readings (
     visibility DOUBLE PRECISION,
     uv_index DOUBLE PRECISION,
     uv_health_concern DOUBLE PRECISION,
-    weather_code DOUBLE PRECISION
+    weather_code INTEGER
 );
 
 SELECT create_hypertable('weather_readings', 'time');
